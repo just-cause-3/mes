@@ -1,0 +1,31 @@
+AREA SQUARE, CODE, READONLY
+ENTRY                 ; Mark first instruction to execute
+
+START
+    LDR R0, =TABLE1       ; Load start address of lookup table
+    LDR R1, =8            ; Number whose square is to be found
+
+    MOV R1, R1, LSL #0X2  ; Generate address offset
+    ADD R0, R0, R1        ; Get address of square value
+
+    LDR R3, [R0]          ; Load square into R3
+
+    NOP
+    NOP
+    NOP
+
+; Lookup table containing squares from 0 to 10
+TABLE1
+    DCD 0X00000000    ; 0^2 = 0
+    DCD 0X00000001    ; 1^2 = 1
+    DCD 0X00000004    ; 2^2 = 4
+    DCD 0X00000009    ; 3^2 = 9
+    DCD 0X00000010    ; 4^2 = 16
+    DCD 0X00000019    ; 5^2 = 25
+    DCD 0X00000024    ; 6^2 = 36
+    DCD 0X00000031    ; 7^2 = 49
+    DCD 0X00000040    ; 8^2 = 64
+    DCD 0X00000051    ; 9^2 = 81
+    DCD 0X00000064    ; 10^2 = 100
+
+END
