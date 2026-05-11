@@ -1,0 +1,29 @@
+AREA ADDITION, CODE, READONLY
+ENTRY                 ; Mark first instruction to execute
+
+START
+    MOV R5, #6            ; Initialize counter to 6 (N = 6)
+    MOV R0, #0            ; Initialize sum to zero
+    LDR R1, =VALUE1       ; Load address of first value
+
+LOOP
+    LDRH R3, [R1], #02    ; Read 16-bit data
+    ADD R0, R0, R3        ; Add value to sum
+
+    SUBS R5, R5, #1       ; Decrement counter
+    CMP R5, #0
+    BNE LOOP              ; Repeat until array ends
+
+    LDR R4, =RESULT       ; Load address of result
+    STR R0, [R4]          ; Store result
+
+JMP
+    B JMP                 ; Infinite loop
+
+VALUE1
+    DCW 0X1111, 0X2222, 0X3333, 0XAAAA, 0XBBBB, 0XCCCC
+
+AREA DATA2, DATA, READWRITE
+RESULT DCD 0X0
+
+END
