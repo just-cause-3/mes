@@ -1,0 +1,14 @@
+AREA MULTIPLY, CODE, READONLY
+ENTRY
+
+START
+    MOV R1, #20        ; Move 20 value to R1 register
+    MOV R2, #220       ; Move 220 value to R2 register
+
+    MUL R3, R1, R2     ; Multiply R1 and R2, store result in R3
+
+    NOP
+    NOP
+    NOP
+
+END
