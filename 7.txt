@@ -26,7 +26,7 @@ void UART0_TxChar(char ch)
 {
     U0THR = ch;
 
-    while((U0LSR & 0x60) == 0);
+    while((U0LSR & 0x20) == 0);  // FIXED: Check THRE bit (bit 5) only
 }
 
 /* Function to send string */
