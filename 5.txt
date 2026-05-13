@@ -1,31 +1,171 @@
-AREA SQUARE, CODE, READONLY
-ENTRY                 ; Mark first instruction to execute
+XSS Detection Using OWASP ZAP in Kali Linux (Beginner Guide)
+Step 1 — Open Terminal
 
-START
-    LDR R0, =TABLE1       ; Load start address of lookup table
-    LDR R1, =8            ; Number whose square is to be found
+Update packages:
 
-    MOV R1, R1, LSL #0X2  ; Generate address offset
-    ADD R0, R0, R1        ; Get address of square value
+sudo apt update
+Step 2 — Install OWASP ZAP
 
-    LDR R3, [R0]          ; Load square into R3
+Install using apt:
 
-    NOP
-    NOP
-    NOP
+sudo apt install zaproxy -y
 
-; Lookup table containing squares from 0 to 10
-TABLE1
-    DCD 0X00000000    ; 0^2 = 0
-    DCD 0X00000001    ; 1^2 = 1
-    DCD 0X00000004    ; 2^2 = 4
-    DCD 0X00000009    ; 3^2 = 9
-    DCD 0X00000010    ; 4^2 = 16
-    DCD 0X00000019    ; 5^2 = 25
-    DCD 0X00000024    ; 6^2 = 36
-    DCD 0X00000031    ; 7^2 = 49
-    DCD 0X00000040    ; 8^2 = 64
-    DCD 0X00000051    ; 9^2 = 81
-    DCD 0X00000064    ; 10^2 = 100
+Check installation:
 
-END
+zaproxy
+
+OR
+
+owasp-zap
+
+ZAP GUI should open.
+
+Step 3 — Start OWASP ZAP
+
+When ZAP opens:
+
+Select:
+
+No, I do not want to persist this session
+
+Then click:
+
+Start
+Step 4 — Launch Browser Through ZAP
+
+Inside ZAP:
+
+Tools → Launch Browser
+
+Choose Firefox.
+
+This browser is already configured with ZAP proxy.
+
+Step 5 — Open Vulnerable Website
+
+Inside launched browser open:
+
+testphp.vulnweb.com
+
+Step 6 — Browse the Website
+
+Click around:
+
+Categories
+Products
+Search
+
+This helps ZAP collect requests.
+
+Step 7 — Use Search Box
+
+Search for:
+
+hello
+
+Submit search.
+
+Step 8 — Find Request in ZAP
+
+In left panel:
+
+Sites
+
+Expand:
+
+testphp.vulnweb.com
+
+Find:
+
+search.php
+
+Click it.
+
+Step 9 — Start Active Scan
+
+Right-click:
+
+search.php
+
+Choose:
+
+Attack → Active Scan
+
+Click:
+
+Start Scan
+Step 10 — Wait for Scan
+
+Bottom tab:
+
+Active Scan
+
+Wait until scan finishes.
+
+Step 11 — Check Alerts
+
+Go to:
+
+Alerts
+
+Look for:
+
+Cross Site Scripting (Reflected)
+Step 12 — Open Vulnerability Details
+
+Double-click the alert.
+
+You will see:
+
+vulnerable parameter
+payload used
+request
+response
+
+Example payload:
+
+<script>alert(1)</script>
+Give feedback
+Step 13 — Verify Manually
+
+Copy vulnerable URL.
+
+Open in browser.
+
+If popup appears:
+
+1
+
+then XSS exists.
+
+Manual Testing in Kali Browser
+
+Try entering this in search box:
+
+<script>alert(1)</script>
+Give feedback
+
+OR:
+
+<img src=x onerror=alert(1)>
+Give feedback
+
+If popup appears → vulnerable.
+
+Optional: Install Firefox in Kali
+
+If missing:
+
+sudo apt install firefox-esr -y
+Optional: Start ZAP From Terminal
+zaproxy
+
+or
+
+owasp-zap
+Troubleshooting
+Browser not opening from ZAP
+
+Install Java:
+
+sudo apt install default-jre -y
